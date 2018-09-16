@@ -1,0 +1,95 @@
+1、
+Create Or Replace View treeView As
+   Select t.*,
+	 (Select Count(*) 
+	  From tree d 
+		Where d.lft <=(Select lft From tree l Where t.Node_Id = l.Node_Id)
+	  And d.rgt>=(Select rgt From tree l Where t.Node_Id = l.Node_Id)) As lev
+ From tree t Order By t.Lft ;
+
+
+
+
+2、
+CREATE OR REPLACE Procedure addNode(
+paramNode_id In Int,
+paramNode_name In Varchar2
+)
+Is
+ paramRgt Int;
+ num Int;
+ id Int;
+ totalNum Int;
+Begin
+ Select Count(*) Into num From tree Where node_id = paramNode_id;
+ If num = 0 Then 
+	 Select Count(*) Into totalNum From tree;
+	 If totalNum = 0 Then
+		  Select seq.nextval Into id From dual;
+		  Insert Into tree(node_id,Node_Name,lft,rgt) Values(id,paramNode_name,1,2);
+			Commit;
+			Return;
+	 Else Return;
+	 End If;
+ End If;
+ Select rgt Into paramRgt From tree Where node_id = paramNode_id;
+         update Tree set Rgt = Rgt + 2 where Rgt >= paramRgt;
+         update Tree set Lft = Lft + 2 where Lft >= paramRgt;
+				 Select seq.nextval Into id From dual;
+         Insert Into tree(node_id,Node_Name,lft,rgt) Values(id,paramNode_name,paramRgt,paramRgt+1);
+	Commit;
+	Exception 
+		When Others Then
+			Rollback;
+End addNode;
+
+3、
+某节点族谱路径，换成count*则可以计算层次
+     level = select @result = count(*) from Tree where Lft <= @lft and Rgt >= @rgt  
+declare
+ @node_id int; 
+ @lft int;
+ @rgt int;
+begin 
+select lft into @lft , rgt into @rgt from treeview where node_id = @node_id;
+SELECT * FROM Treeview WHERE Lft < @lft AND Rgt > @rgt ORDER BY Lft ASC; 
+end
+
+4、
+某节点子孙数量 = (rgt-lft-1)/2;  (rgt-lft+1)/2为包含自身的子孙节点数量
+某节点所有子孙前序遍历 =
+select * from treeview where lft between @lft and @rgt; --含自身
+select * from treeview where lft>@lft and lft<@rgt  --不含自身
+
+
+
+5、
+Create  Or Replace Procedure deleteNode(
+v_Id Int
+)
+Is
+ v_rgt Int;
+ v_lft Int;
+ v_num Int;
+Begin
+	Select Count(*) Into v_num From tree Where v_id = tree.Node_Id;
+	If v_num = 0 Then 
+		Return;
+	End If;
+	Select lft,rgt Into v_lft,v_rgt  From tree Where v_id = tree.Node_Id;
+	Delete From tree Where lft Between v_lft And v_rgt;
+	Update tree Set lft = lft-(v_rgt-v_lft+1)/2*2 Where lft > v_lft;
+	Update tree Set rgt = rgt-(v_rgt-v_lft+1)/2*2 Where rgt > v_rgt;
+	Commit;
+	Exception 
+   When Others Then
+		 Rollback;
+End;
+
+
+
+Create Sequence seq Increment By 1
+Start With 1
+Nomaxvalue
+Nocycle
+Nocache
