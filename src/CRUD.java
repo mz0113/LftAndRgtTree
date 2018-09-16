@@ -3,6 +3,14 @@ import java.util.List;
 
 public interface CRUD {
 
-    //就是需要构造一堆节点，然后子类添加到父类下面，将其加到treeModel中
+    /**
+     * list转换为java tree，返回根节点
+     */
     public DefaultMutableTreeNode convertToTree(List<TreeNode> list);
+
+    /**
+     * 将swing tree根节点转换为xml
+     */
+    public String convertToXml(DefaultMutableTreeNode rootNode,String leafType,StringBuffer xml);
+
 }
